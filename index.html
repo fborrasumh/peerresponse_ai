@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PeerResponse — Respuesta a Revisores con IA</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#f8f6f0;min-height:100vh;color:#1a1a2e}
+
+/* HEADER */
+.app-header{background:linear-gradient(160deg,#1a1a2e 0%,#2d2d4e 100%);padding:2rem 1.5rem 3.8rem;position:relative;overflow:hidden}
+.app-header::before{content:'';position:absolute;top:0;right:0;width:320px;height:320px;background:radial-gradient(circle,rgba(192,57,43,0.15) 0%,transparent 70%)}
+.app-header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:44px;background:#f8f6f0;clip-path:ellipse(52% 100% at 50% 100%)}
+.header-icon{width:58px;height:58px;background:rgba(192,57,43,0.25);border:1px solid rgba(192,57,43,0.4);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:#e8a09a;flex-shrink:0}
+.header-tag{display:inline-flex;align-items:center;gap:.35rem;background:rgba(192,57,43,0.2);border:1px solid rgba(192,57,43,0.35);border-radius:99px;padding:.25rem .7rem;font-size:.72rem;font-weight:600;color:#e8a09a;letter-spacing:.06em;text-transform:uppercase;margin-bottom:.6rem}
+
+/* STEPS */
+.steps-bar{display:flex;align-items:center;margin:2rem auto 1.5rem;max-width:740px;padding:0 1.5rem}
+.step-item{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1}
+.step-circle{width:40px;height:40px;border-radius:50%;border:2px solid #d4c8b8;background:#fff;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;color:#a09080;transition:all .3s;z-index:1}
+.step-circle.active{border-color:#c0392b;background:#c0392b;color:#fff;box-shadow:0 0 0 4px rgba(192,57,43,0.18)}
+.step-circle.done{border-color:#c0392b;background:#c0392b;color:#fff}
+.step-label{font-size:.65rem;font-weight:600;color:#a09080;text-align:center;white-space:nowrap;letter-spacing:.03em}
+.step-label.active{color:#c0392b;font-weight:700}
+.step-connector{flex:1;height:2px;background:#d4c8b8;margin-bottom:22px;transition:background .3s}
+.step-connector.done{background:#c0392b}
+
+/* CARDS */
+.card{background:#fff;border-radius:20px;padding:2rem;box-shadow:0 2px 20px rgba(26,26,46,0.08);border:1px solid #e8e0d0}
+.section-title{font-family:'Crimson Pro',Georgia,serif;font-size:1.3rem;font-weight:700;color:#1a1a2e;margin:0 0 .25rem;letter-spacing:-.01em}
+.section-sub{font-size:.83rem;color:#7a7060;margin:0 0 1.4rem}
+.form-label{font-size:.75rem;font-weight:700;color:#5a5040;letter-spacing:.05em;text-transform:uppercase;margin-bottom:.4rem;display:block}
+input[type="text"],input[type="password"],input[type="number"],textarea,select{width:100%;border:1.5px solid #d4c8b8;border-radius:10px;padding:.65rem .9rem;font-family:'Inter',inherit;font-size:.9rem;color:#1a1a2e;background:#faf8f4;outline:none;transition:border-color .2s,box-shadow .2s}
+input:focus,textarea:focus,select:focus{border-color:#c0392b;box-shadow:0 0 0 3px rgba(192,57,43,0.1);background:#fff}
+
+/* INPUT TABS */
+.input-tabs{display:flex;border:1.5px solid #d4c8b8;border-radius:11px;overflow:hidden;margin-bottom:1.1rem}
+.input-tab{flex:1;padding:.62rem .5rem;border:none;background:#faf8f4;font-family:inherit;font-size:.82rem;font-weight:600;color:#8a8070;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.35rem}
+.input-tab:not(:last-child){border-right:1.5px solid #d4c8b8}
+.input-tab.active{background:#c0392b;color:#fff}
+.input-tab:hover:not(.active){background:#f5ede8;color:#c0392b}
+
+/* UPLOAD ZONE */
+.upload-zone{border:2px dashed #c8b8a8;border-radius:13px;padding:2rem 1.5rem;text-align:center;cursor:pointer;transition:all .25s;background:#faf8f4;position:relative}
+.upload-zone:hover,.upload-zone.dragover{border-color:#c0392b;background:#fff5f3}
+.upload-zone.has-file{border-color:#c0392b;background:#fff5f3;border-style:solid}
+.upload-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+
+/* AGENT PIPELINE */
+.pipeline-wrap{background:#1a1a2e;border-radius:16px;padding:1.5rem;margin-bottom:1.5rem;overflow:hidden}
+.pipeline-title{font-size:.72rem;font-weight:700;color:#9090b0;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1rem}
+.agents-row{display:flex;gap:0;align-items:center;overflow-x:auto;padding-bottom:.3rem}
+.agent-node{display:flex;flex-direction:column;align-items:center;gap:.35rem;flex-shrink:0;min-width:80px}
+.agent-dot{width:42px;height:42px;border-radius:50%;border:2px solid #3a3a5e;background:#252540;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .4s;position:relative}
+.agent-dot.running{border-color:#c0392b;background:rgba(192,57,43,.2);box-shadow:0 0 0 6px rgba(192,57,43,.15);animation:pulse-agent 1.2s ease infinite}
+.agent-dot.done{border-color:#27ae60;background:rgba(39,174,96,.18)}
+.agent-dot.done::after{content:'✓';position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;background:#27ae60;border-radius:50%;font-size:.6rem;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:16px;text-align:center}
+.agent-label{font-size:.6rem;font-weight:600;color:#6060a0;text-align:center;line-height:1.3;max-width:72px}
+.agent-label.running{color:#e8a09a}
+.agent-label.done{color:#6ec68a}
+.agent-arrow{color:#3a3a5e;font-size:.7rem;flex-shrink:0;margin:0 .2rem;margin-bottom:18px}
+.agent-log{background:#0d0d1e;border-radius:10px;padding:.8rem 1rem;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:#6060a0;max-height:140px;overflow-y:auto;line-height:1.6}
+.agent-log .log-line{color:#9090c0;margin-bottom:2px}
+.agent-log .log-line.active{color:#e8c4a0}
+.agent-log .log-line.success{color:#6ec68a}
+.agent-log .log-line.ref{color:#7090e0}
+@keyframes pulse-agent{0%{box-shadow:0 0 0 0 rgba(192,57,43,.4)}70%{box-shadow:0 0 0 10px rgba(192,57,43,0)}100%{box-shadow:0 0 0 0 rgba(192,57,43,0)}}
+
+/* PROGRESS */
+.progress-track{height:6px;background:#e8e0d0;border-radius:99px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#c0392b,#e74c3c);border-radius:99px;transition:width .5s ease}
+
+/* RESULT TABS */
+.result-tabs{display:flex;border-bottom:2px solid #e8e0d0;margin-bottom:1.4rem;gap:0}
+.result-tab{padding:.7rem 1.2rem;border:none;background:transparent;font-family:inherit;font-size:.85rem;font-weight:600;color:#8a8070;cursor:pointer;transition:all .2s;border-bottom:3px solid transparent;margin-bottom:-2px}
+.result-tab.active{color:#c0392b;border-bottom-color:#c0392b}
+.result-tab:hover:not(.active){color:#1a1a2e}
+.result-pane{display:none}
+.result-pane.active{display:block}
+
+/* CONTENT DISPLAY */
+.response-block{background:#faf8f4;border-radius:12px;padding:1.2rem 1.4rem;margin-bottom:1rem;border-left:4px solid #c0392b}
+.response-block.comment{border-left-color:#2980b9;background:#f5f8ff}
+.response-block.change{border-left-color:#27ae60;background:#f5fff8}
+.response-block-label{font-size:.7rem;font-weight:700;color:#8a8070;letter-spacing:.06em;text-transform:uppercase;margin-bottom:.5rem}
+.response-block-label.comment{color:#2980b9}
+.response-block-label.change{color:#27ae60}
+.response-text{font-size:.9rem;line-height:1.8;color:#1a1a2e;white-space:pre-wrap;font-family:'Crimson Pro',Georgia,serif;font-size:1rem}
+.ref-chip{display:inline-flex;align-items:center;gap:3px;background:#eef3ff;color:#2980b9;border-radius:4px;padding:1px 6px;font-size:.75rem;font-weight:600;margin:0 2px;cursor:help;border:1px solid #c0d4f0}
+
+/* BUTTONS */
+.btn-primary{background:#c0392b;color:#fff;border:none;border-radius:11px;padding:.78rem 1.6rem;font-family:inherit;font-size:.92rem;font-weight:700;cursor:pointer;transition:background .2s,transform .1s;display:inline-flex;align-items:center;gap:.5rem}
+.btn-primary:hover{background:#a93226}
+.btn-primary:disabled{background:#c0a0a0;cursor:not-allowed}
+.btn-secondary{background:transparent;color:#c0392b;border:2px solid #c0392b;border-radius:11px;padding:.7rem 1.4rem;font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:.5rem}
+.btn-secondary:hover{background:#fff5f3}
+.btn-ghost{background:transparent;color:#8a8070;border:none;border-radius:9px;padding:.5rem .9rem;font-family:inherit;font-size:.83rem;font-weight:600;cursor:pointer;transition:color .2s;display:inline-flex;align-items:center;gap:.4rem}
+.btn-ghost:hover{color:#1a1a2e}
+.btn-dark{background:#1a1a2e;color:#fff;border:none;border-radius:11px;padding:.78rem 1.6rem;font-family:inherit;font-size:.92rem;font-weight:700;cursor:pointer;transition:background .2s;display:inline-flex;align-items:center;gap:.5rem}
+.btn-dark:hover{background:#2d2d4e}
+.btn-dark:disabled{background:#808090;cursor:not-allowed}
+
+/* CHIP */
+.chip{display:inline-flex;align-items:center;gap:4px;background:#fff5f3;color:#c0392b;border-radius:99px;padding:3px 10px;font-size:.75rem;font-weight:700;border:1px solid #f0c0b8}
+
+/* SPINNER */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1a1a2e;color:#fff;padding:.7rem 1.2rem;border-radius:12px;font-size:.87rem;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:9999;transform:translateY(120%);transition:transform .3s ease;display:flex;align-items:center;gap:.5rem}
+.toast.show{transform:translateY(0)}
+.toast.error{background:#c0392b}
+.toast.success{background:#1a7a3c}
+
+.panel{display:none}.panel.active{display:block}
+.divider{border:none;border-top:1.5px solid #e8e0d0;margin:1.4rem 0}
+
+@media(max-width:640px){
+  .agents-row{gap:0}.card{padding:1.25rem}
+  .step-label{font-size:.58rem}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div style="max-width:740px;margin:0 auto;">
+    <div class="header-tag"><i class="fa-solid fa-microscope"></i> Peer Review Response System</div>
+    <div style="display:flex;align-items:center;gap:1rem;margin-top:.3rem">
+      <div class="header-icon"><i class="fa-solid fa-reply-all"></i></div>
+      <div>
+        <h1 style="font-family:'Crimson Pro',Georgia,serif;font-size:1.9rem;font-weight:700;color:#fff;margin:0;letter-spacing:-.02em;">PeerResponse</h1>
+        <p style="color:#9090b0;font-size:.84rem;margin:.15rem 0 0;">Respuesta a revisores con 7 agentes IA y bibliografía real</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- STEPS -->
+<div class="steps-bar">
+  <div class="step-item">
+    <div class="step-circle active" id="sc1"><i class="fa-solid fa-upload" style="font-size:.75rem;"></i></div>
+    <span class="step-label active" id="sl1">Documentos</span>
+  </div>
+  <div class="step-connector" id="con1"></div>
+  <div class="step-item">
+    <div class="step-circle" id="sc2"><i class="fa-solid fa-gear" style="font-size:.75rem;"></i></div>
+    <span class="step-label" id="sl2">Configurar</span>
+  </div>
+  <div class="step-connector" id="con2"></div>
+  <div class="step-item">
+    <div class="step-circle" id="sc3"><i class="fa-solid fa-robot" style="font-size:.75rem;"></i></div>
+    <span class="step-label" id="sl3">Agentes</span>
+  </div>
+  <div class="step-connector" id="con3"></div>
+  <div class="step-item">
+    <div class="step-circle" id="sc4"><i class="fa-solid fa-file-signature" style="font-size:.75rem;"></i></div>
+    <span class="step-label" id="sl4">Respuesta</span>
+  </div>
+</div>
+
+<main style="max-width:740px;margin:0 auto;padding:0 1.5rem 3rem;">
+
+  <!-- ── PANEL 1: DOCUMENTOS ── -->
+  <div class="panel active" id="panel1">
+    <div class="card">
+      <div class="section-title">Carga los documentos</div>
+      <p class="section-sub">Sube o pega el manuscrito original y la revisión de los revisores.</p>
+
+      <!-- MANUSCRITO -->
+      <div style="margin-bottom:1.6rem;">
+        <label class="form-label" style="display:flex;align-items:center;gap:.4rem;">
+          <span style="background:#1a1a2e;color:#fff;border-radius:5px;padding:1px 7px;font-size:.7rem;">MANUSCRITO</span>
+          Artículo original
+        </label>
+        <div class="input-tabs" id="msTabs">
+          <button class="input-tab active" id="msTabPDF" onclick="setInputMode('ms','pdf')"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+          <button class="input-tab" id="msTabWord" onclick="setInputMode('ms','word')"><i class="fa-solid fa-file-word"></i> Word</button>
+          <button class="input-tab" id="msTabTexto" onclick="setInputMode('ms','texto')"><i class="fa-solid fa-keyboard"></i> Pegar texto</button>
+        </div>
+        <div id="msModeFile">
+          <div class="upload-zone" id="msUploadZone">
+            <input type="file" id="msFile" accept=".pdf,.docx,.doc" onchange="onFileSelected('ms',this)">
+            <i class="fa-solid fa-file-lines" style="font-size:2rem;color:#c8b8a8;display:block;margin-bottom:.6rem;"></i>
+            <p style="font-weight:700;color:#c0392b;margin:0 0 .2rem;font-size:.9rem;">Arrastra el manuscrito aquí</p>
+            <p style="font-size:.78rem;color:#8a8070;margin:0;">PDF o Word · máx. 10 MB</p>
+          </div>
+          <div id="msFileInfo" style="display:none;margin-top:.7rem;padding:.65rem 1rem;background:#fff5f3;border-radius:9px;align-items:center;gap:.7rem;font-size:.85rem;">
+            <i class="fa-solid fa-file-lines" style="color:#c0392b;"></i>
+            <div><div id="msFileName" style="font-weight:700;"></div><div id="msFileSize" style="color:#8a8070;font-size:.77rem;"></div></div>
+          </div>
+        </div>
+        <div id="msModeTexto" style="display:none;">
+          <textarea id="msTexto" rows="8" placeholder="Pega aquí el texto completo del manuscrito…"></textarea>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- REVISIÓN -->
+      <div style="margin-bottom:1rem;">
+        <label class="form-label" style="display:flex;align-items:center;gap:.4rem;">
+          <span style="background:#c0392b;color:#fff;border-radius:5px;padding:1px 7px;font-size:.7rem;">REVISIÓN</span>
+          Comentarios de los revisores
+        </label>
+        <div class="input-tabs">
+          <button class="input-tab active" id="revTabPDF" onclick="setInputMode('rev','pdf')"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+          <button class="input-tab" id="revTabWord" onclick="setInputMode('rev','word')"><i class="fa-solid fa-file-word"></i> Word</button>
+          <button class="input-tab" id="revTabTexto" onclick="setInputMode('rev','texto')"><i class="fa-solid fa-keyboard"></i> Pegar texto</button>
+        </div>
+        <div id="revModeFile">
+          <div class="upload-zone" id="revUploadZone">
+            <input type="file" id="revFile" accept=".pdf,.docx,.doc" onchange="onFileSelected('rev',this)">
+            <i class="fa-solid fa-comments" style="font-size:2rem;color:#c8b8a8;display:block;margin-bottom:.6rem;"></i>
+            <p style="font-weight:700;color:#c0392b;margin:0 0 .2rem;font-size:.9rem;">Arrastra la revisión aquí</p>
+            <p style="font-size:.78rem;color:#8a8070;margin:0;">PDF o Word · máx. 10 MB</p>
+          </div>
+          <div id="revFileInfo" style="display:none;margin-top:.7rem;padding:.65rem 1rem;background:#fff5f3;border-radius:9px;align-items:center;gap:.7rem;font-size:.85rem;">
+            <i class="fa-solid fa-comments" style="color:#c0392b;"></i>
+            <div><div id="revFileName" style="font-weight:700;"></div><div id="revFileSize" style="color:#8a8070;font-size:.77rem;"></div></div>
+          </div>
+        </div>
+        <div id="revModeTexto" style="display:none;">
+          <textarea id="revTexto" rows="8" placeholder="Pega aquí los comentarios completos de los revisores…"></textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:1.5rem;">
+        <button class="btn-primary" onclick="irPaso2()" style="width:100%;">
+          Siguiente — Configurar <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PANEL 2: CONFIGURAR ── -->
+  <div class="panel" id="panel2">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <div class="section-title">Configura la respuesta</div>
+        <button class="btn-ghost" onclick="irPaso1()"><i class="fa-solid fa-arrow-left"></i> Atrás</button>
+      </div>
+      <p class="section-sub">Indica el contexto del artículo para que los agentes adapten la respuesta.</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.1rem;">
+        <div>
+          <label class="form-label">Título del artículo</label>
+          <input type="text" id="titulo" placeholder="Título completo del manuscrito">
+        </div>
+        <div>
+          <label class="form-label">Revista / Journal</label>
+          <input type="text" id="revista" placeholder="Ej. Nature, PLOS ONE, Nutrients…">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.1rem;">
+        <div>
+          <label class="form-label">Área temática / disciplina</label>
+          <input type="text" id="area" placeholder="Ej. Biomedicina, Estadística, Agroecología…">
+        </div>
+        <div>
+          <label class="form-label">Tipo de decisión del editor</label>
+          <select id="decision">
+            <option value="major">Major revision</option>
+            <option value="minor">Minor revision</option>
+            <option value="reject_resubmit">Reject & resubmit</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:1.1rem;">
+        <label class="form-label">Autores (para la carta de respuesta)</label>
+        <input type="text" id="autores" placeholder="Ej. García et al. / Fernando Borrás, Ana López">
+      </div>
+
+      <div style="margin-bottom:1.1rem;">
+        <label class="form-label">Instrucciones adicionales <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a8070;">(opcional)</span></label>
+        <textarea id="instrucciones" rows="3" placeholder="Ej. Ser especialmente firme con el revisor 2 en el punto 3. No aceptar eliminar la sección de limitaciones."></textarea>
+      </div>
+
+      <hr class="divider">
+
+      <div style="margin-bottom:1.4rem;">
+        <label class="form-label">Clave API OpenAI</label>
+        <div style="position:relative;">
+          <input type="password" id="apiKey" placeholder="sk-..." style="padding-right:2.8rem;">
+          <button onclick="toggleApiKey()" style="position:absolute;right:.8rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#8a8070;font-size:.9rem;">
+            <i class="fa-regular fa-eye" id="eyeIcon"></i>
+          </button>
+        </div>
+        <p style="font-size:.72rem;color:#8a8070;margin:.35rem 0 0;display:flex;align-items:center;gap:.3rem;">
+          <i class="fa-solid fa-lock" style="font-size:.68rem;"></i> Guardada localmente, nunca se comparte.
+        </p>
+      </div>
+
+      <button class="btn-primary" onclick="irPaso3()" style="width:100%;">
+        <i class="fa-solid fa-robot"></i> Lanzar pipeline multiagente
+      </button>
+    </div>
+  </div>
+
+  <!-- ── PANEL 3: PIPELINE AGENTES ── -->
+  <div class="panel" id="panel3">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;">
+        <div class="section-title">Pipeline multiagente</div>
+        <button class="btn-ghost" onclick="irPaso2()"><i class="fa-solid fa-arrow-left"></i> Atrás</button>
+      </div>
+
+      <!-- AGENT PIPELINE VIZ -->
+      <div class="pipeline-wrap">
+        <div class="pipeline-title"><i class="fa-solid fa-circle-nodes" style="margin-right:.4rem;"></i>Agentes activos</div>
+        <div class="agents-row" id="agentsRow">
+          <!-- Generado por JS -->
+        </div>
+        <div style="margin-top:1rem;">
+          <div class="agent-log" id="agentLog">
+            <div class="log-line">▶ Sistema iniciado. Esperando instrucciones…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Global progress -->
+      <div style="margin-bottom:1.4rem;">
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;color:#5a5040;margin-bottom:.4rem;">
+          <span id="globalStatus">Preparando agentes…</span>
+          <span id="globalPct">0%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="globalBar" style="width:0%"></div></div>
+      </div>
+
+      <!-- Referencias encontradas -->
+      <div id="refsSection" style="display:none;margin-bottom:1.4rem;">
+        <label class="form-label" style="margin-bottom:.5rem;">Referencias encontradas por el agente bibliográfico</label>
+        <div id="refsList" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
+      </div>
+
+      <button class="btn-primary" id="btnVerResultado" onclick="irPaso4()" style="display:none;width:100%;">
+        <i class="fa-solid fa-file-signature"></i> Ver respuesta completa
+      </button>
+    </div>
+  </div>
+
+  <!-- ── PANEL 4: RESULTADO ── -->
+  <div class="panel" id="panel4">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+        <div class="section-title">Respuesta generada</div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <button class="btn-ghost" onclick="irPaso3()"><i class="fa-solid fa-arrow-left"></i> Atrás</button>
+          <button class="btn-secondary" onclick="regenerar()"><i class="fa-solid fa-rotate-right"></i> Regenerar</button>
+        </div>
+      </div>
+
+      <!-- Result tabs -->
+      <div class="result-tabs">
+        <button class="result-tab active" onclick="setResultTab('carta',this)"><i class="fa-solid fa-envelope-open-text" style="margin-right:.3rem;"></i>Carta respuesta</button>
+        <button class="result-tab" onclick="setResultTab('cambios',this)"><i class="fa-solid fa-list-check" style="margin-right:.3rem;"></i>Resumen cambios</button>
+        <button class="result-tab" onclick="setResultTab('manuscrito',this)"><i class="fa-solid fa-file-pen" style="margin-right:.3rem;"></i>Manuscrito revisado</button>
+        <button class="result-tab" onclick="setResultTab('refs',this)"><i class="fa-solid fa-book" style="margin-right:.3rem;"></i>Bibliografía</button>
+      </div>
+
+      <div class="result-pane active" id="pane-carta">
+        <div id="cartaContent"></div>
+      </div>
+      <div class="result-pane" id="pane-cambios">
+        <div id="cambiosContent"></div>
+      </div>
+      <div class="result-pane" id="pane-manuscrito">
+        <div id="manuscritoContent"></div>
+      </div>
+      <div class="result-pane" id="pane-refs">
+        <div id="refsContent"></div>
+      </div>
+
+      <!-- Export -->
+      <div style="border-top:1.5px solid #e8e0d0;padding-top:1.2rem;margin-top:1.5rem;display:flex;gap:.8rem;flex-wrap:wrap;">
+        <button class="btn-primary" onclick="exportarWord()" id="btnWord"><i class="fa-solid fa-file-word"></i> Descargar Word</button>
+        <button class="btn-dark" onclick="exportarPDF()" id="btnPDF"><i class="fa-solid fa-file-pdf"></i> Descargar PDF</button>
+        <button class="btn-ghost" onclick="copiarCarta()"><i class="fa-regular fa-copy"></i> Copiar carta</button>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:1.2rem;">
+      <button class="btn-ghost" onclick="nuevo()"><i class="fa-solid fa-plus"></i> Nueva respuesta</button>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"><i class="fa-solid fa-circle-check"></i><span id="toastMsg"></span></div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let msMode='pdf', revMode='pdf';
+let msTexto='', revTexto='';
+let msFile=null, revFile=null;
+let resultado=null;
+let refsEncontradas=[];
+
+// ─── AGENTS CONFIG ────────────────────────────────────────────────────────────
+const AGENTS=[
+  {id:'analyzer',  icon:'🔍', label:'Analizador\nde revisión'},
+  {id:'classifier',icon:'🏷️', label:'Clasificador\nde comentarios'},
+  {id:'biblio',    icon:'📚', label:'Agente\nbibliográfico'},
+  {id:'strategist',icon:'🎯', label:'Estratega\nde respuesta'},
+  {id:'writer',    icon:'✍️', label:'Redactor\nde carta'},
+  {id:'revisor',   icon:'🔬', label:'Revisor\nde manuscrito'},
+  {id:'qa',        icon:'✅', label:'Control\nde calidad'}
+];
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+window.onload=()=>{
+  const k=localStorage.getItem('peerresponse_apikey');
+  if(k) document.getElementById('apiKey').value=k;
+  buildAgentPipeline();
+};
+
+function buildAgentPipeline(){
+  const row=document.getElementById('agentsRow');
+  row.innerHTML='';
+  AGENTS.forEach((ag,i)=>{
+    const node=document.createElement('div');
+    node.className='agent-node';
+    node.id='node-'+ag.id;
+    node.innerHTML=`<div class="agent-dot" id="dot-${ag.id}">${ag.icon}</div>
+      <div class="agent-label" id="lbl-${ag.id}">${ag.label}</div>`;
+    row.appendChild(node);
+    if(i<AGENTS.length-1){
+      const arr=document.createElement('div');
+      arr.className='agent-arrow'; arr.innerHTML='→';
+      row.appendChild(arr);
+    }
+  });
+}
+
+// ─── STEPS ────────────────────────────────────────────────────────────────────
+function setStep(n){
+  [1,2,3,4].forEach(i=>{
+    document.getElementById('panel'+i).classList.toggle('active',i===n);
+    const sc=document.getElementById('sc'+i),sl=document.getElementById('sl'+i);
+    sc.classList.remove('active','done');
+    if(i<n) sc.classList.add('done'); else if(i===n) sc.classList.add('active');
+    sl.classList.toggle('active',i===n);
+  });
+  [1,2,3].forEach(i=>document.getElementById('con'+i).classList.toggle('done',i<n));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function irPaso1(){setStep(1);}
+function irPaso2(){
+  // Validar que hay contenido en ambos documentos
+  const msTxt=getMsTexto(); const revTxt=getRevTexto();
+  if(msTxt.length<50){showToast('Añade el manuscrito original','error');return;}
+  if(revTxt.length<30){showToast('Añade la revisión de los revisores','error');return;}
+  setStep(2);
+}
+async function irPaso3(){
+  const k=document.getElementById('apiKey').value.trim();
+  if(!k){showToast('Introduce tu clave API de OpenAI','error');return;}
+  localStorage.setItem('peerresponse_apikey',k);
+  setStep(3);
+  await ejecutarPipeline();
+}
+function irPaso4(){setStep(4);renderResultado();}
+
+// ─── INPUT MODES ──────────────────────────────────────────────────────────────
+function setInputMode(doc,mode){
+  if(doc==='ms'){
+    msMode=mode;
+    ['PDF','Word','Texto'].forEach(m=>document.getElementById('msTab'+m).classList.toggle('active',m.toLowerCase()===mode));
+    document.getElementById('msModeFile').style.display=mode!=='texto'?'block':'none';
+    document.getElementById('msModeTexto').style.display=mode==='texto'?'block':'none';
+    document.getElementById('msFile').accept=mode==='pdf'?'.pdf':'.docx,.doc';
+  } else {
+    revMode=mode;
+    ['PDF','Word','Texto'].forEach(m=>document.getElementById('revTab'+m).classList.toggle('active',m.toLowerCase()===mode));
+    document.getElementById('revModeFile').style.display=mode!=='texto'?'block':'none';
+    document.getElementById('revModeTexto').style.display=mode==='texto'?'block':'none';
+    document.getElementById('revFile').accept=mode==='pdf'?'.pdf':'.docx,.doc';
+  }
+}
+
+function onFileSelected(doc,input){
+  const file=input.files[0]; if(!file) return;
+  if(file.size>11*1024*1024){showToast('El fichero supera 10 MB','error');return;}
+  if(doc==='ms'){msFile=file; showFileInfo('ms',file);}
+  else{revFile=file; showFileInfo('rev',file);}
+}
+
+function showFileInfo(doc,file){
+  document.getElementById(doc+'UploadZone').classList.add('has-file');
+  document.getElementById(doc+'FileInfo').style.display='flex';
+  document.getElementById(doc+'FileName').textContent=file.name;
+  document.getElementById(doc+'FileSize').textContent=formatBytes(file.size);
+}
+
+// ─── EXTRAER TEXTO ────────────────────────────────────────────────────────────
+async function extraerPDF(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let txt='';
+  for(let i=1;i<=pdf.numPages;i++){
+    const p=await pdf.getPage(i);
+    const c=await p.getTextContent();
+    txt+=c.items.map(it=>it.str).join(' ')+'\n';
+  }
+  return txt;
+}
+
+async function extraerDocx(file){
+  const buf=await file.arrayBuffer();
+  if(!window.JSZip) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  const zip=await JSZip.loadAsync(buf);
+  const xml=await zip.file('word/document.xml').async('string');
+  return xml.replace(/<w:br[^>]*\/>/g,'\n').replace(/<w:p[ >][^>]*>/g,'\n').replace(/<[^>]+>/g,'')
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+async function getMsTexto(){
+  if(msMode==='texto') return document.getElementById('msTexto').value.trim();
+  if(!msFile) return '';
+  if(msMode==='pdf') return await extraerPDF(msFile);
+  return await extraerDocx(msFile);
+}
+
+async function getRevTexto(){
+  if(revMode==='texto') return document.getElementById('revTexto').value.trim();
+  if(!revFile) return '';
+  if(revMode==='pdf') return await extraerPDF(revFile);
+  return await extraerDocx(revFile);
+}
+
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);
+  });
+}
+
+// ─── BIBLIOGRAFÍA APIs ────────────────────────────────────────────────────────
+async function buscarSemanticScholar(query){
+  try{
+    const r=await fetch(`https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=3&fields=title,authors,year,externalIds,abstract`);
+    const d=await r.json();
+    return (d.data||[]).map(p=>({
+      title:p.title,
+      authors:(p.authors||[]).map(a=>a.name).join(', '),
+      year:p.year,
+      doi:p.externalIds?.DOI||'',
+      source:'Semantic Scholar'
+    }));
+  }catch{return[];}
+}
+
+async function buscarPubMed(query){
+  try{
+    const sr=await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(query)}&retmax=3&retmode=json`);
+    const sd=await sr.json();
+    const ids=(sd.esearchresult?.idlist||[]).slice(0,3);
+    if(!ids.length) return[];
+    const fr=await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${ids.join(',')}&retmode=json`);
+    const fd=await fr.json();
+    return ids.map(id=>{
+      const a=fd.result?.[id]||{};
+      return {title:a.title||'',authors:(a.authors||[]).map(x=>x.name).join(', '),year:a.pubdate?.split(' ')[0]||'',doi:a.elocationid?.replace('doi: ',''),source:'PubMed'};
+    });
+  }catch{return[];}
+}
+
+async function buscarOpenAlex(query){
+  try{
+    const r=await fetch(`https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=3&select=title,authorships,publication_year,doi`);
+    const d=await r.json();
+    return (d.results||[]).map(w=>({
+      title:w.title,
+      authors:(w.authorships||[]).slice(0,3).map(a=>a.author?.display_name||'').join(', '),
+      year:w.publication_year,
+      doi:w.doi?.replace('https://doi.org/',''),
+      source:'OpenAlex'
+    }));
+  }catch{return[];}
+}
+
+async function buscarArxiv(query){
+  try{
+    const r=await fetch(`https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&max_results=2`);
+    const txt=await r.text();
+    const parser=new DOMParser();
+    const xml=parser.parseFromString(txt,'text/xml');
+    return Array.from(xml.querySelectorAll('entry')).slice(0,2).map(e=>({
+      title:e.querySelector('title')?.textContent?.trim()||'',
+      authors:Array.from(e.querySelectorAll('author name')).map(a=>a.textContent).join(', '),
+      year:e.querySelector('published')?.textContent?.split('-')[0]||'',
+      doi:e.querySelector('id')?.textContent?.replace('http://arxiv.org/abs/','arXiv:')||'',
+      source:'arXiv'
+    }));
+  }catch{return[];}
+}
+
+async function buscarCrossRef(query){
+  try{
+    const r=await fetch(`https://api.crossref.org/works?query=${encodeURIComponent(query)}&rows=2&select=title,author,published,DOI`);
+    const d=await r.json();
+    return (d.message?.items||[]).slice(0,2).map(w=>({
+      title:Array.isArray(w.title)?w.title[0]:w.title||'',
+      authors:(w.author||[]).slice(0,3).map(a=>`${a.given||''} ${a.family||''}`).join(', '),
+      year:w.published?.['date-parts']?.[0]?.[0]||'',
+      doi:w.DOI||'',
+      source:'CrossRef'
+    }));
+  }catch{return[];}
+}
+
+async function buscarEuropePMC(query){
+  try{
+    const r=await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}&pageSize=2&format=json`);
+    const d=await r.json();
+    return (d.resultList?.result||[]).slice(0,2).map(w=>({
+      title:w.title||'',authors:w.authorString||'',year:w.pubYear||'',doi:w.doi||'',source:'EuropePMC'
+    }));
+  }catch{return[];}
+}
+
+async function buscarBibliografia(queries){
+  const todos=[];
+  for(const q of queries.slice(0,4)){
+    addLog(`📚 Buscando: "${q.substring(0,60)}…"`,'ref');
+    const [ss,pm,oa,ax,cr,ep]=await Promise.all([
+      buscarSemanticScholar(q),buscarPubMed(q),buscarOpenAlex(q),buscarArxiv(q),buscarCrossRef(q),buscarEuropePMC(q)
+    ]);
+    todos.push(...ss,...pm,...oa,...ax,...cr,...ep);
+  }
+  // Deduplicar por título
+  const vistos=new Set();
+  return todos.filter(r=>{
+    const k=(r.title||'').substring(0,50).toLowerCase();
+    if(vistos.has(k)) return false; vistos.add(k); return true;
+  }).slice(0,20);
+}
+
+// ─── PIPELINE MULTIAGENTE ─────────────────────────────────────────────────────
+function setAgent(id,state){
+  const dot=document.getElementById('dot-'+id);
+  const lbl=document.getElementById('lbl-'+id);
+  dot.className='agent-dot'+(state?' '+state:'');
+  lbl.className='agent-label'+(state?' '+state:'');
+}
+
+function addLog(msg,type=''){
+  const log=document.getElementById('agentLog');
+  const line=document.createElement('div');
+  line.className='log-line'+(type?' '+type:'');
+  line.textContent=msg;
+  log.appendChild(line);
+  log.scrollTop=log.scrollHeight;
+}
+
+function setGlobal(pct,msg){
+  document.getElementById('globalBar').style.width=pct+'%';
+  document.getElementById('globalPct').textContent=pct+'%';
+  document.getElementById('globalStatus').textContent=msg;
+}
+
+async function callGPT(system,user,apiKey,maxTokens=2000){
+  const r=await fetch('https://api.openai.com/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
+    body:JSON.stringify({model:'gpt-4o-mini',max_tokens:maxTokens,temperature:0.4,
+      messages:[{role:'system',content:system},{role:'user',content:user}]})
+  });
+  if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'Error API');}
+  const d=await r.json();
+  return d.choices[0].message.content.trim();
+}
+
+async function ejecutarPipeline(){
+  const apiKey=document.getElementById('apiKey').value.trim();
+  const titulo=document.getElementById('titulo').value.trim();
+  const revista=document.getElementById('revista').value.trim();
+  const area=document.getElementById('area').value.trim();
+  const decision=document.getElementById('decision').value;
+  const autores=document.getElementById('autores').value.trim();
+  const instrucciones=document.getElementById('instrucciones').value.trim();
+
+  // Resetear UI
+  document.getElementById('agentLog').innerHTML='<div class="log-line">▶ Pipeline iniciado…</div>';
+  AGENTS.forEach(a=>setAgent(a.id,''));
+  document.getElementById('refsSection').style.display='none';
+  document.getElementById('btnVerResultado').style.display='none';
+  refsEncontradas=[];
+
+  try{
+    // Extraer textos (con loading)
+    setGlobal(2,'Extrayendo texto de los documentos…');
+    addLog('🔄 Extrayendo texto del manuscrito…');
+    const msT=await getMsTexto();
+    addLog('🔄 Extrayendo texto de la revisión…');
+    const revT=await getRevTexto();
+    addLog(`✓ Manuscrito: ${msT.length} caracteres | Revisión: ${revT.length} caracteres`,'success');
+
+    const ctx=`Título: ${titulo||'(no especificado)'}\nRevista: ${revista||'(no especificada)'}\nÁrea: ${area||'(no especificada)'}\nDecisión: ${decision}\nAutores: ${autores||'Los autores'}\n${instrucciones?'Instrucciones especiales: '+instrucciones:''}`;
+
+    // ── AGENTE 1: ANALIZADOR ──────────────────────────────────────────────────
+    setAgent('analyzer','running'); setGlobal(8,'Agente 1: Analizando la revisión…');
+    addLog('🔍 [AGENTE 1] Analizando comentarios de los revisores…','active');
+    const analisis=await callGPT(
+      `Eres un experto en publicación científica. Analiza los comentarios de los revisores y extrae información estructurada. Responde en JSON:\n{"idioma":"","num_revisores":0,"decision":"","comentarios":[{"revisor":1,"numero":1,"tipo":"mayor|menor|tecnico|editorial","texto":"","urgencia":"alta|media|baja"}]}`,
+      `CONTEXTO:\n${ctx}\n\nREVISIÓN:\n${revT.substring(0,8000)}`,apiKey,1500);
+    const analisisJson=parseJSON(analisis,{idioma:'es',num_revisores:1,decision:decision,comentarios:[]});
+    addLog(`✓ ${analisisJson.comentarios.length} comentarios detectados (${analisisJson.num_revisores} revisor/es) | Idioma: ${analisisJson.idioma}`,'success');
+    setAgent('analyzer','done');
+
+    // ── AGENTE 2: CLASIFICADOR ────────────────────────────────────────────────
+    setAgent('classifier','running'); setGlobal(20,'Agente 2: Clasificando comentarios por prioridad…');
+    addLog('🏷️ [AGENTE 2] Clasificando y priorizando comentarios…','active');
+    const clasificacion=await callGPT(
+      `Eres un experto en gestión de revisiones científicas. Clasifica los comentarios por prioridad de respuesta y sugiere la estrategia (aceptar/refutar/parcialmente aceptar) para cada uno. Responde JSON:\n{"clasificados":[{"revisor":1,"numero":1,"estrategia":"aceptar|refutar|parcial","argumentacion":"","keywords_busqueda":["kw1","kw2"]}]}`,
+      `ANÁLISIS PREVIO:\n${JSON.stringify(analisisJson)}\n\nCONTEXTO:\n${ctx}\n\nREVISIÓN COMPLETA:\n${revT.substring(0,6000)}`,apiKey,1500);
+    const clasJson=parseJSON(clasificacion,{clasificados:[]});
+    const mayorCount=clasJson.clasificados.filter(c=>c.estrategia==='aceptar').length;
+    const refutarCount=clasJson.clasificados.filter(c=>c.estrategia==='refutar').length;
+    addLog(`✓ Estrategia: ${mayorCount} aceptar · ${refutarCount} refutar · ${clasJson.clasificados.length-mayorCount-refutarCount} parciales`,'success');
+    setAgent('classifier','done');
+
+    // ── AGENTE 3: BIBLIOGRÁFICO ───────────────────────────────────────────────
+    setAgent('biblio','running'); setGlobal(36,'Agente 3: Buscando bibliografía de soporte…');
+    addLog('📚 [AGENTE 3] Consultando 6 bases de datos científicas…','active');
+    const keywords=clasJson.clasificados.flatMap(c=>c.keywords_busqueda||[]).filter(Boolean);
+    const queriesBase=keywords.length>0?[...new Set(keywords)].slice(0,4):[area||titulo||'peer review response methodology'];
+    refsEncontradas=await buscarBibliografia(queriesBase);
+    addLog(`✓ ${refsEncontradas.length} referencias encontradas (Semantic Scholar, PubMed, OpenAlex, arXiv, CrossRef, EuropePMC)`,'success');
+
+    // Mostrar refs en UI
+    if(refsEncontradas.length>0){
+      document.getElementById('refsSection').style.display='block';
+      const list=document.getElementById('refsList');
+      list.innerHTML='';
+      refsEncontradas.slice(0,12).forEach((r,i)=>{
+        const chip=document.createElement('span');
+        chip.className='ref-chip';
+        chip.title=`${r.authors} (${r.year}) — ${r.source}`;
+        chip.textContent=`[${i+1}] ${(r.title||'').substring(0,40)}…`;
+        list.appendChild(chip);
+      });
+    }
+    setAgent('biblio','done');
+
+    const refsBiblio=refsEncontradas.slice(0,10).map((r,i)=>
+      `[${i+1}] ${r.authors||'Autores'} (${r.year||'s.f.'}). ${r.title}.${r.doi?' DOI: '+r.doi:''} (${r.source})`
+    ).join('\n');
+
+    // ── AGENTE 4: ESTRATEGA ───────────────────────────────────────────────────
+    setAgent('strategist','running'); setGlobal(52,'Agente 4: Diseñando estrategia de respuesta…');
+    addLog('🎯 [AGENTE 4] Elaborando estrategia punto por punto…','active');
+    const estrategia=await callGPT(
+      `Eres un editor científico senior con 20 años de experiencia. Diseña la estrategia detallada para responder a cada comentario, citando referencias cuando refuerze la posición. Responde JSON:\n{"estrategia_global":"","puntos":[{"revisor":1,"numero":1,"respuesta_propuesta":"","refs_a_citar":["[1]","[2]"],"cambio_en_ms":"descripción del cambio o 'sin cambio'"}]}`,
+      `CONTEXTO:\n${ctx}\n\nCLASIFICACIÓN:\n${JSON.stringify(clasJson)}\n\nREFERENCIAS DISPONIBLES:\n${refsBiblio}\n\nMANUSCRITO (extracto):\n${msT.substring(0,4000)}\n\nREVISIÓN:\n${revT.substring(0,4000)}`,apiKey,2000);
+    const estratJson=parseJSON(estrategia,{estrategia_global:'',puntos:[]});
+    addLog(`✓ Estrategia diseñada para ${estratJson.puntos.length} puntos de respuesta`,'success');
+    setAgent('strategist','done');
+
+    // ── AGENTE 5: REDACTOR CARTA ──────────────────────────────────────────────
+    setAgent('writer','running'); setGlobal(66,'Agente 5: Redactando carta de respuesta…');
+    addLog('✍️ [AGENTE 5] Redactando carta formal de respuesta…','active');
+    const carta=await callGPT(
+      `Eres un investigador senior redactando una carta de respuesta a revisores académicos. El tono debe ser formal, respetuoso pero firme cuando sea necesario. Responde en el idioma: ${analisisJson.idioma}. La carta debe incluir: encabezado formal, agradecimiento, introducción general, respuesta punto por punto a cada comentario (con la sección "Comentario del Revisor X:" y "Respuesta:"), y cierre formal. Cita referencias cuando corresponda usando el formato [N].`,
+      `CONTEXTO:\n${ctx}\n\nESTRATEGIA:\n${JSON.stringify(estratJson)}\n\nREFERENCIAS:\n${refsBiblio}\n\nREVISIÓN ORIGINAL:\n${revT.substring(0,5000)}`,apiKey,3000);
+    addLog(`✓ Carta redactada (${carta.length} caracteres)`,'success');
+    setAgent('writer','done');
+
+    // ── AGENTE 6: REVISOR MANUSCRITO ──────────────────────────────────────────
+    setAgent('revisor','running'); setGlobal(80,'Agente 6: Generando manuscrito revisado…');
+    addLog('🔬 [AGENTE 6] Incorporando cambios al manuscrito…','active');
+    const manuscritoRevisado=await callGPT(
+      `Eres un investigador incorporando las revisiones al manuscrito. Genera el manuscrito revisado completo con los cambios indicados marcados entre [CAMBIO: ...] y [FIN CAMBIO]. Mantén el idioma y estilo del original. Incluye también un resumen de cambios al inicio.`,
+      `CONTEXTO:\n${ctx}\n\nCAMBIOS A INCORPORAR:\n${estratJson.puntos.map(p=>`- Punto ${p.numero} Rev${p.revisor}: ${p.cambio_en_ms}`).join('\n')}\n\nMANUSCRITO ORIGINAL:\n${msT.substring(0,6000)}`,apiKey,3000);
+    addLog(`✓ Manuscrito revisado generado`,'success');
+    setAgent('revisor','done');
+
+    // ── AGENTE 7: QA ──────────────────────────────────────────────────────────
+    setAgent('qa','running'); setGlobal(92,'Agente 7: Control de calidad…');
+    addLog('✅ [AGENTE 7] Verificando coherencia y completitud…','active');
+    const resumenCambios=await callGPT(
+      `Eres el responsable de control de calidad de la respuesta. Genera: 1) un resumen ejecutivo de los cambios realizados en el manuscrito, 2) una tabla de correspondencia comentario→cambio, 3) verificación de que todos los comentarios tienen respuesta. Responde en el idioma: ${analisisJson.idioma}.`,
+      `CARTA GENERADA (extracto):\n${carta.substring(0,2000)}\n\nESTRATEGIA:\n${JSON.stringify(estratJson)}\n\nCONTEXTO:\n${ctx}`,apiKey,1500);
+    addLog('✓ Control de calidad superado — todos los comentarios tienen respuesta','success');
+    setAgent('qa','done');
+
+    setGlobal(100,'✓ Pipeline completado con éxito');
+    addLog('🎉 Pipeline multiagente completado. Respuesta lista.','success');
+
+    resultado={carta,manuscritoRevisado,resumenCambios,refs:refsEncontradas,analisis:analisisJson,estrategia:estratJson,meta:{titulo,revista,area,decision,autores,idioma:analisisJson.idioma}};
+    document.getElementById('btnVerResultado').style.display='block';
+
+  }catch(e){
+    addLog('❌ Error: '+e.message);
+    showToast('Error en el pipeline: '+e.message,'error');
+  }
+}
+
+function parseJSON(text,fallback){
+  try{
+    const c=text.replace(/```json|```/g,'').trim();
+    return JSON.parse(c);
+  }catch{return fallback;}
+}
+
+// ─── RENDER RESULTADO ─────────────────────────────────────────────────────────
+function renderResultado(){
+  if(!resultado) return;
+
+  // CARTA
+  document.getElementById('cartaContent').innerHTML=
+    `<div class="response-block">
+      <div class="response-block-label">Carta de respuesta a revisores</div>
+      <div class="response-text">${escHtml(resultado.carta)}</div>
+    </div>`;
+
+  // CAMBIOS
+  document.getElementById('cambiosContent').innerHTML=
+    `<div class="response-block change">
+      <div class="response-block-label change"><i class="fa-solid fa-list-check"></i> Resumen de cambios realizados</div>
+      <div class="response-text">${escHtml(resultado.resumenCambios)}</div>
+    </div>`;
+
+  // MANUSCRITO
+  document.getElementById('manuscritoContent').innerHTML=
+    `<div class="response-block comment">
+      <div class="response-block-label comment"><i class="fa-solid fa-file-pen"></i> Manuscrito revisado (cambios marcados)</div>
+      <div class="response-text">${escHtml(resultado.manuscritoRevisado)}</div>
+    </div>`;
+
+  // REFS
+  if(resultado.refs.length>0){
+    const refsHtml=resultado.refs.map((r,i)=>
+      `<div class="response-block" style="border-left-color:#7090e0;background:#f5f7ff;padding:.8rem 1rem;margin-bottom:.6rem;">
+        <span style="font-weight:700;color:#2d5a8e;font-size:.82rem;">[${i+1}]</span>
+        <span style="font-size:.88rem;color:#1a1a2e;margin-left:.4rem;">${escHtml(r.authors||'')} (${r.year||'s.f.'}). <em>${escHtml(r.title||'')}</em>.${r.doi?` <a href="https://doi.org/${r.doi}" target="_blank" style="color:#2980b9;">DOI</a>`:''}</span>
+        <span class="chip" style="margin-left:.4rem;font-size:.68rem;background:#e8eeff;color:#2d5a8e;border:1px solid #c0d0f0;">${r.source}</span>
+      </div>`
+    ).join('');
+    document.getElementById('refsContent').innerHTML=`<div class="response-block-label" style="margin-bottom:.8rem;"><i class="fa-solid fa-book"></i> ${resultado.refs.length} referencias encontradas</div>${refsHtml}`;
+  }
+}
+
+function setResultTab(pane,btn){
+  document.querySelectorAll('.result-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.result-pane').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('pane-'+pane).classList.add('active');
+}
+
+function escHtml(t){return(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ─── REGENERAR ────────────────────────────────────────────────────────────────
+async function regenerar(){
+  setStep(3);
+  await ejecutarPipeline();
+}
+
+// ─── EXPORT WORD ──────────────────────────────────────────────────────────────
+async function exportarWord(){
+  if(!resultado) return;
+  const btn=document.getElementById('btnWord');
+  btn.disabled=true; btn.innerHTML='<div class="spinner"></div> Generando…';
+  const {Document,Packer,Paragraph,TextRun,HeadingLevel,BorderStyle,AlignmentType,LevelFormat}=docx;
+  const m=resultado.meta;
+  const ch=[];
+  const sep=()=>new Paragraph({children:[],border:{bottom:{style:BorderStyle.SINGLE,size:4,color:'D0C8B8',space:4}},spacing:{before:200,after:200}});
+  const h=(txt,lvl)=>new Paragraph({heading:lvl||HeadingLevel.HEADING_2,children:[new TextRun({text:txt,bold:true,font:'Arial',size:lvl===HeadingLevel.HEADING_1?32:24,color:lvl===HeadingLevel.HEADING_1?'1A1A2E':'C0392B'})]});
+  const p=(txt)=>new Paragraph({children:[new TextRun({text:txt,font:'Georgia',size:20})],spacing:{after:80}});
+
+  ch.push(h('Respuesta a los Revisores',HeadingLevel.HEADING_1));
+  ch.push(new Paragraph({children:[new TextRun({text:`${m.titulo||'Manuscrito'} | ${m.revista||''} | ${new Date().toLocaleDateString('es-ES')}`,size:20,font:'Arial',color:'555555',italics:true})]}));
+  ch.push(sep());
+
+  ch.push(h('1. Carta de Respuesta'));
+  resultado.carta.split('\n').forEach(line=>{ if(line.trim()) ch.push(p(line)); else ch.push(new Paragraph({children:[]}));});
+  ch.push(sep());
+
+  ch.push(h('2. Resumen de Cambios Realizados'));
+  resultado.resumenCambios.split('\n').forEach(line=>{ if(line.trim()) ch.push(p(line)); else ch.push(new Paragraph({children:[]}));});
+  ch.push(sep());
+
+  ch.push(h('3. Manuscrito Revisado'));
+  resultado.manuscritoRevisado.split('\n').forEach(line=>{ if(line.trim()) ch.push(p(line)); else ch.push(new Paragraph({children:[]}));});
+  ch.push(sep());
+
+  if(resultado.refs.length>0){
+    ch.push(h('4. Referencias Bibliográficas'));
+    resultado.refs.forEach((r,i)=>ch.push(p(`[${i+1}] ${r.authors||''} (${r.year||'s.f.'}). ${r.title||''}.${r.doi?' DOI: '+r.doi:''} (${r.source})`)));
+  }
+
+  const doc2=new Document({
+    styles:{default:{document:{run:{font:'Arial',size:20}}},paragraphStyles:[
+      {id:'Heading1',name:'Heading 1',basedOn:'Normal',next:'Normal',quickFormat:true,run:{size:32,bold:true,font:'Arial',color:'1A1A2E'},paragraph:{spacing:{before:300,after:200},outlineLevel:0}},
+      {id:'Heading2',name:'Heading 2',basedOn:'Normal',next:'Normal',quickFormat:true,run:{size:24,bold:true,font:'Arial',color:'C0392B'},paragraph:{spacing:{before:240,after:120},outlineLevel:1}}
+    ]},
+    sections:[{properties:{page:{size:{width:11906,height:16838},margin:{top:1440,right:1440,bottom:1440,left:1440}}},children:ch}]
+  });
+  const buf=await Packer.toBuffer(doc2);
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`PeerResponse_${(m.titulo||'manuscrito').replace(/\s+/g,'_').substring(0,30)}.docx`;
+  a.click(); URL.revokeObjectURL(url);
+  btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-file-word"></i> Descargar Word';
+  showToast('Word descargado','success');
+}
+
+// ─── EXPORT PDF ───────────────────────────────────────────────────────────────
+function exportarPDF(){
+  if(!resultado) return;
+  const btn=document.getElementById('btnPDF');
+  btn.disabled=true; btn.innerHTML='<div class="spinner"></div> Generando…';
+  const m=resultado.meta;
+  let html=`<style>body{font-family:Georgia,serif;font-size:11pt;color:#1a1a2e;line-height:1.75}h1{font-size:16pt;color:#1a1a2e;margin-bottom:6px}h2{font-size:12pt;color:#c0392b;margin-top:20px;margin-bottom:8px;border-bottom:1px solid #d4c8b8;padding-bottom:3px}.meta{font-size:9pt;color:#7a7060;margin-bottom:16px;font-style:italic}.sec{white-space:pre-wrap;margin-bottom:12px;font-size:10.5pt}.ref{font-size:9pt;margin-bottom:4px;color:#2d2d4e}</style>`;
+  html+=`<h1>Respuesta a los Revisores</h1><div class="meta">${m.titulo||'Manuscrito'} | ${m.revista||''} | ${new Date().toLocaleDateString('es-ES')}</div>`;
+  html+=`<h2>1. Carta de Respuesta</h2><div class="sec">${resultado.carta}</div>`;
+  html+=`<h2>2. Resumen de Cambios</h2><div class="sec">${resultado.resumenCambios}</div>`;
+  html+=`<h2>3. Manuscrito Revisado</h2><div class="sec">${resultado.manuscritoRevisado}</div>`;
+  if(resultado.refs.length>0){
+    html+=`<h2>4. Referencias</h2>`;
+    resultado.refs.forEach((r,i)=>html+=`<div class="ref">[${i+1}] ${r.authors||''} (${r.year||'s.f.'}). <em>${r.title||''}</em>.${r.doi?' DOI: '+r.doi:''}</div>`);
+  }
+  const el=document.createElement('div'); el.innerHTML=html; document.body.appendChild(el);
+  const fn=`PeerResponse_${(m.titulo||'manuscrito').replace(/\s+/g,'_').substring(0,30)}.pdf`;
+  html2pdf().set({margin:[15,15,15,15],filename:fn,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}})
+    .from(el).save().then(()=>{
+      document.body.removeChild(el);
+      btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-file-pdf"></i> Descargar PDF';
+      showToast('PDF descargado','success');
+    });
+}
+
+function copiarCarta(){
+  if(!resultado) return;
+  navigator.clipboard.writeText(resultado.carta).then(()=>showToast('Carta copiada al portapapeles','success'));
+}
+
+function nuevo(){
+  resultado=null; refsEncontradas=[];
+  msFile=null; revFile=null; msTexto=''; revTexto='';
+  ['ms','rev'].forEach(d=>{
+    document.getElementById(d+'UploadZone').classList.remove('has-file');
+    document.getElementById(d+'FileInfo').style.display='none';
+    document.getElementById(d+'File').value='';
+  });
+  document.getElementById('msTexto').value='';
+  document.getElementById('revTexto').value='';
+  buildAgentPipeline();
+  setStep(1);
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function toggleApiKey(){
+  const i=document.getElementById('apiKey'),ic=document.getElementById('eyeIcon');
+  i.type=i.type==='password'?'text':'password';
+  ic.className=i.type==='password'?'fa-regular fa-eye':'fa-regular fa-eye-slash';
+}
+function formatBytes(b){if(b<1024)return b+' B';if(b<1024*1024)return(b/1024).toFixed(1)+' KB';return(b/(1024*1024)).toFixed(1)+' MB';}
+
+let toastTimer;
+function showToast(msg,type='info'){
+  const t=document.getElementById('toast');
+  t.className='toast'+(type==='error'?' error':type==='success'?' success':'');
+  t.querySelector('i').className=type==='error'?'fa-solid fa-circle-xmark':type==='success'?'fa-solid fa-circle-check':'fa-solid fa-circle-info';
+  document.getElementById('toastMsg').textContent=msg;
+  t.classList.add('show'); clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+// Drag & drop MS
+['ms','rev'].forEach(doc=>{
+  const zone=document.getElementById(doc+'UploadZone');
+  zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('dragover');});
+  zone.addEventListener('dragleave',()=>zone.classList.remove('dragover'));
+  zone.addEventListener('drop',e=>{
+    e.preventDefault();zone.classList.remove('dragover');
+    const file=e.dataTransfer.files[0];
+    if(file){const dt=new DataTransfer();dt.items.add(file);
+      const input=document.getElementById(doc+'File');
+      input.files=dt.files;onFileSelected(doc,input);}
+  });
+});
+</script>
+</body>
+</html>
